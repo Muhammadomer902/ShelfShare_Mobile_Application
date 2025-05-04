@@ -1,5 +1,6 @@
 package com.smdproject.shelfshare
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.animation.BounceInterpolator
 import android.view.animation.TranslateAnimation
@@ -44,7 +45,7 @@ class WelcomePage : AppCompatActivity() {
                 logoImageView.setImageResource(R.drawable.logo_orange_right)
 
                 // Smooth background transition to white
-                val colorFrom = Color.parseColor("#EA3E23") // Replace with actual color value if defined
+                val colorFrom = Color.parseColor("#EA3E23")
                 val colorTo = Color.WHITE
                 val colorAnimation = ValueAnimator.ofObject(ArgbEvaluator(), colorFrom, colorTo)
                 colorAnimation.duration = 1000 // 1 second
@@ -55,9 +56,22 @@ class WelcomePage : AppCompatActivity() {
 
                 // Fade-out animation
                 val fadeOutAnimation = AlphaAnimation(1f, 0f)
-                fadeOutAnimation.duration = 2500 // 1 second
+                fadeOutAnimation.duration = 2500 // 2.5 seconds
                 fadeOutAnimation.fillAfter = true
                 logoImageView.startAnimation(fadeOutAnimation)
+
+                // Navigate to LogInPage after fade-out completes
+                fadeOutAnimation.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
+                    override fun onAnimationStart(animation: android.view.animation.Animation?) {}
+
+                    override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                        val intent = Intent(this@WelcomePage, LogInPage::class.java)
+                        startActivity(intent)
+                        finish() // Close WelcomePage
+                    }
+
+                    override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+                })
             }
 
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
