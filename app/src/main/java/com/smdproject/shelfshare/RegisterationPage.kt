@@ -1,14 +1,12 @@
 package com.smdproject.shelfshare
 
-import android.content.Intent
 import android.os.Bundle
-import android.view.View
+import android.util.Log
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
 import android.widget.ImageView
 import android.widget.RelativeLayout
-import android.widget.TextView
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import androidx.activity.enableEdgeToEdge
@@ -16,11 +14,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
-class LogInPage : AppCompatActivity() {
+class RegisterationPage : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_log_in_page)
+        setContentView(R.layout.activity_registeration_page)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -31,20 +29,23 @@ class LogInPage : AppCompatActivity() {
         val rootLayout = findViewById<RelativeLayout>(R.id.main)
         val headerLayout = findViewById<RelativeLayout>(R.id.header)
         val logoImageView = findViewById<ImageView>(R.id.logoImageView)
-        val registerTextView = findViewById<TextView>(R.id.registerTextView)
+
+        if (rootLayout == null) Log.e("RegisterationPage", "rootLayout is null")
+        if (headerLayout == null) Log.e("RegisterationPage", "headerLayout is null")
+        if (logoImageView == null) Log.e("RegisterationPage", "logoImageView is null")
 
         // Set initial state for animation (white header and orange logo)
-        headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
-        logoImageView.setImageResource(R.drawable.logo_orange_right)
+        headerLayout?.setBackgroundColor(android.graphics.Color.WHITE)
+        logoImageView?.setImageResource(R.drawable.logo_orange_right)
 
-        // Create a TranslateAnimation to slide in from the right
-        val slideInFromRight = TranslateAnimation(
-            1000f,  // Start from 1000px to the right
-            0f,     // End at its normal position
-            0f,     // No vertical movement
+        // Create a TranslateAnimation to slide in from the left
+        val slideInFromLeft = TranslateAnimation(
+            -1000f,  // Start from 1000px to the left
+            0f,      // End at its normal position
+            0f,      // No vertical movement
             0f
         )
-        slideInFromRight.duration = 1000 // 1 second
+        slideInFromLeft.duration = 1000 // 1 second
 
         // Create an AlphaAnimation for fading in
         val fadeIn = AlphaAnimation(0f, 1f)
@@ -52,11 +53,11 @@ class LogInPage : AppCompatActivity() {
 
         // Combine both animations into an AnimationSet
         val animationSet = AnimationSet(true)
-        animationSet.addAnimation(slideInFromRight)
+        animationSet.addAnimation(slideInFromLeft)
         animationSet.addAnimation(fadeIn)
 
         // Apply the animation to the root layout
-        rootLayout.startAnimation(animationSet)
+        rootLayout?.startAnimation(animationSet)
 
         // Change header background to AppPrimary and logo to white_right after animation ends with fade effect
         animationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
@@ -69,49 +70,15 @@ class LogInPage : AppCompatActivity() {
                 val colorAnimation = ValueAnimator.ofObject(ArgbEvaluator(), colorFrom, colorTo)
                 colorAnimation.duration = 1000 // 1 second
                 colorAnimation.addUpdateListener { animator ->
-                    headerLayout.setBackgroundColor(animator.animatedValue as Int)
+                    headerLayout?.setBackgroundColor(animator.animatedValue as Int)
                 }
                 colorAnimation.start()
 
                 // Change logo to white_right after animation
-                logoImageView.setImageResource(R.drawable.logo_white_right)
+                logoImageView?.setImageResource(R.drawable.logo_white_right)
             }
 
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
         })
-
-        // Set click listener for Register Account text
-        registerTextView.setOnClickListener {
-            // Fade out and slide out to the right
-            val fadeOut = AlphaAnimation(1f, 0f)
-            fadeOut.duration = 2000
-            val slideOutToRight = TranslateAnimation(
-                0f, 1000f,  // Slide to the right by 1000px
-                0f, 0f
-            )
-            slideOutToRight.duration = 2000
-            val outAnimationSet = AnimationSet(true)
-            outAnimationSet.addAnimation(fadeOut)
-            outAnimationSet.addAnimation(slideOutToRight)
-
-            outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
-                override fun onAnimationStart(animation: android.view.animation.Animation?) {
-                    // Disable the view during animation to prevent interaction
-                    rootLayout.isEnabled = false
-                }
-
-                override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
-
-                override fun onAnimationEnd(animation: android.view.animation.Animation?) {
-                    // Hide the layout to prevent reappearance
-                    rootLayout.visibility = View.GONE
-                    val intent = Intent(this@LogInPage, RegisterationPage::class.java)
-                    startActivity(intent)
-                    finish() // Finish after starting the new activity
-                }
-            })
-
-            rootLayout.startAnimation(outAnimationSet)
-        }
     }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "283635010197",
+    "project_id": "shelfsharesmd",
+    "storage_bucket": "shelfsharesmd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:283635010197:android:8e444f1145315473dde99c",
+        "android_client_info": {
+          "package_name": "com.smdproject.shelfshare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_dJ0qhjImoJt581MMIxwveh3tGv2ZXpE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
