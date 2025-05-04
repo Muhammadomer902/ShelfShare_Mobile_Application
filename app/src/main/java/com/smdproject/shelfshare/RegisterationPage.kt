@@ -1,12 +1,15 @@
 package com.smdproject.shelfshare
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
 import android.widget.ImageView
 import android.widget.RelativeLayout
+import android.widget.TextView
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import androidx.activity.enableEdgeToEdge
@@ -29,10 +32,12 @@ class RegisterationPage : AppCompatActivity() {
         val rootLayout = findViewById<RelativeLayout>(R.id.main)
         val headerLayout = findViewById<RelativeLayout>(R.id.header)
         val logoImageView = findViewById<ImageView>(R.id.logoImageView)
+        val alreadyRegisteredTextView = findViewById<TextView>(R.id.alreadyRegisteredTextView)
 
         if (rootLayout == null) Log.e("RegisterationPage", "rootLayout is null")
         if (headerLayout == null) Log.e("RegisterationPage", "headerLayout is null")
         if (logoImageView == null) Log.e("RegisterationPage", "logoImageView is null")
+        if (alreadyRegisteredTextView == null) Log.e("RegisterationPage", "alreadyRegisteredTextView is null")
 
         // Set initial state for animation (white header and orange logo)
         headerLayout?.setBackgroundColor(android.graphics.Color.WHITE)
@@ -80,5 +85,39 @@ class RegisterationPage : AppCompatActivity() {
 
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
         })
+
+        // Set click listener for Already Registered text
+        alreadyRegisteredTextView?.setOnClickListener {
+            // Fade out and slide out to the left
+            val fadeOut = AlphaAnimation(1f, 0f)
+            fadeOut.duration = 2000
+            val slideOutToLeft = TranslateAnimation(
+                0f, -1000f,  // Slide to the left by 1000px
+                0f, 0f
+            )
+            slideOutToLeft.duration = 2000
+            val outAnimationSet = AnimationSet(true)
+            outAnimationSet.addAnimation(fadeOut)
+            outAnimationSet.addAnimation(slideOutToLeft)
+
+            outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
+                override fun onAnimationStart(animation: android.view.animation.Animation?) {
+                    // Disable the view during animation to prevent interaction
+                    rootLayout.isEnabled = false
+                }
+
+                override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+
+                override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                    // Hide the layout to prevent reappearance
+                    rootLayout.visibility = View.GONE
+                    val intent = Intent(this@RegisterationPage, LogInPage::class.java)
+                    startActivity(intent)
+                    finish() // Finish after starting the new activity
+                }
+            })
+
+            rootLayout.startAnimation(outAnimationSet)
+        }
     }
 }
