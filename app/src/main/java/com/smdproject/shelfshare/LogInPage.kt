@@ -6,17 +6,22 @@ import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.RelativeLayout
 import android.widget.TextView
+import android.widget.Toast
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.firebase.auth.FirebaseAuth
 
 class LogInPage : AppCompatActivity() {
+    private lateinit var auth: FirebaseAuth
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -27,11 +32,17 @@ class LogInPage : AppCompatActivity() {
             insets
         }
 
+        // Initialize Firebase Auth
+        auth = FirebaseAuth.getInstance()
+
         // Get references to views
         val rootLayout = findViewById<RelativeLayout>(R.id.main)
         val headerLayout = findViewById<RelativeLayout>(R.id.header)
         val logoImageView = findViewById<ImageView>(R.id.logoImageView)
         val registerTextView = findViewById<TextView>(R.id.registerTextView)
+        val emailEditText = findViewById<EditText>(R.id.emailEditText)
+        val passwordEditText = findViewById<EditText>(R.id.passwordEditText)
+        val loginButton = findViewById<TextView>(R.id.loginButton)
 
         // Set initial state for animation (white header and orange logo)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
@@ -112,6 +123,60 @@ class LogInPage : AppCompatActivity() {
             })
 
             rootLayout.startAnimation(outAnimationSet)
+        }
+
+        // Set click listener for Login button
+        loginButton.setOnClickListener {
+            val email = emailEditText.text.toString().trim()
+            val password = passwordEditText.text.toString().trim()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Validate password length (minimum 8 characters)
+            if (password.length < 8) {
+                Toast.makeText(this, "Password must be at least 8 characters long", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Sign in with Firebase Authentication
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
+                        Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show()
+                        // Fade out and slide out to the right after successful login
+                        val fadeOut = AlphaAnimation(1f, 0f)
+                        fadeOut.duration = 2000
+                        val slideOutToRight = TranslateAnimation(
+                            0f, 1000f,  // Slide to the right by 1000px
+                            0f, 0f
+                        )
+                        slideOutToRight.duration = 2000
+                        val outAnimationSet = AnimationSet(true)
+                        outAnimationSet.addAnimation(fadeOut)
+                        outAnimationSet.addAnimation(slideOutToRight)
+
+                        outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
+                            override fun onAnimationStart(animation: android.view.animation.Animation?) {
+                                rootLayout.isEnabled = false
+                            }
+
+                            override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+
+                            override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                                rootLayout.visibility = View.GONE
+                                // Navigate to a home page or stay logged in (modify intent as needed)
+                                finish()
+                            }
+                        })
+
+                        rootLayout.startAnimation(outAnimationSet)
+                    } else {
+                        Toast.makeText(this, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
         }
     }
 }

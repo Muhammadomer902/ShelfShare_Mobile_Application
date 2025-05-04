@@ -7,17 +7,25 @@ import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.RelativeLayout
 import android.widget.TextView
+import android.widget.Toast
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.database.FirebaseDatabase
 
 class RegisterationPage : AppCompatActivity() {
+    private lateinit var auth: FirebaseAuth
+    private lateinit var database: FirebaseDatabase
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -28,11 +36,21 @@ class RegisterationPage : AppCompatActivity() {
             insets
         }
 
+        // Initialize Firebase Auth and Realtime Database
+        auth = FirebaseAuth.getInstance()
+        database = FirebaseDatabase.getInstance()
+
         // Get references to views
         val rootLayout = findViewById<RelativeLayout>(R.id.main)
         val headerLayout = findViewById<RelativeLayout>(R.id.header)
         val logoImageView = findViewById<ImageView>(R.id.logoImageView)
         val alreadyRegisteredTextView = findViewById<TextView>(R.id.alreadyRegisteredTextView)
+        val usernameEditText = findViewById<EditText>(R.id.usernameEditText)
+        val nameEditText = findViewById<EditText>(R.id.nameEditText)
+        val emailEditText = findViewById<EditText>(R.id.emailEditText)
+        val passwordEditText = findViewById<EditText>(R.id.passwordEditText)
+        val contactEditText = findViewById<EditText>(R.id.contactEditText)
+        val registerButton = findViewById<TextView>(R.id.registerButton) // Assuming Button is styled as TextView
 
         if (rootLayout == null) Log.e("RegisterationPage", "rootLayout is null")
         if (headerLayout == null) Log.e("RegisterationPage", "headerLayout is null")
@@ -118,6 +136,86 @@ class RegisterationPage : AppCompatActivity() {
             })
 
             rootLayout.startAnimation(outAnimationSet)
+        }
+
+        // Set click listener for Register button
+        registerButton.setOnClickListener {
+            val username = usernameEditText.text.toString().trim()
+            val name = nameEditText.text.toString().trim()
+            val email = emailEditText.text.toString().trim()
+            val password = passwordEditText.text.toString().trim()
+            val contact = contactEditText.text.toString().trim()
+
+            // Validate fields
+            if (username.isEmpty() || name.isEmpty() || email.isEmpty() || password.isEmpty() || contact.isEmpty()) {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Validate password length (minimum 8 characters)
+            if (password.length < 8) {
+                Toast.makeText(this, "Password must be at least 8 characters long", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Register user with Firebase Authentication
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
+                        val user = auth.currentUser
+                        saveUserToRealtimeDatabase(user, username, name, contact)
+                        // Fade out and slide out to the left after successful registration
+                        val fadeOut = AlphaAnimation(1f, 0f)
+                        fadeOut.duration = 2000
+                        val slideOutToLeft = TranslateAnimation(
+                            0f, -1000f,  // Slide to the left by 1000px
+                            0f, 0f
+                        )
+                        slideOutToLeft.duration = 2000
+                        val outAnimationSet = AnimationSet(true)
+                        outAnimationSet.addAnimation(fadeOut)
+                        outAnimationSet.addAnimation(slideOutToLeft)
+
+                        outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
+                            override fun onAnimationStart(animation: android.view.animation.Animation?) {
+                                rootLayout.isEnabled = false
+                            }
+
+                            override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+
+                            override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                                rootLayout.visibility = View.GONE
+                                val intent = Intent(this@RegisterationPage, LogInPage::class.java)
+                                startActivity(intent)
+                                finish()
+                            }
+                        })
+
+                        rootLayout.startAnimation(outAnimationSet)
+                    } else {
+                        Toast.makeText(this, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+        }
+    }
+
+    private fun saveUserToRealtimeDatabase(user: FirebaseUser?, username: String, name: String, contact: String) {
+        if (user != null) {
+            val userData = hashMapOf(
+                "username" to username,
+                "name" to name,
+                "contact" to contact
+            )
+            database.reference
+                .child("users")
+                .child(user.uid)
+                .setValue(userData)
+                .addOnSuccessListener {
+                    Log.d("RegisterationPage", "User data saved to Realtime Database")
+                }
+                .addOnFailureListener { e ->
+                    Log.w("RegisterationPage", "Error saving user data", e)
+                }
         }
     }
 }
