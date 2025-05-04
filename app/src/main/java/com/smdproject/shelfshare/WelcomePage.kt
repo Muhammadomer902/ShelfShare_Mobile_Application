@@ -1,6 +1,14 @@
 package com.smdproject.shelfshare
 
 import android.os.Bundle
+import android.view.animation.BounceInterpolator
+import android.view.animation.TranslateAnimation
+import android.view.animation.AlphaAnimation
+import android.widget.ImageView
+import android.graphics.Color
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
+import android.widget.RelativeLayout
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -16,5 +24,43 @@ class WelcomePage : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+
+        // Bounce animation for logo from top to its position
+        val logoImageView = findViewById<ImageView>(R.id.logoImageView)
+        val bounceAnimation = TranslateAnimation(0f, 0f, -1000f, 0f) // Start 1000px above
+        bounceAnimation.duration = 2000 // 2 seconds
+        bounceAnimation.interpolator = BounceInterpolator() // Adds bounce effect
+        bounceAnimation.fillAfter = true
+
+        // Start the bounce animation
+        logoImageView.startAnimation(bounceAnimation)
+
+        // Fade-out animation and background transition after bounce completes
+        bounceAnimation.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
+            override fun onAnimationStart(animation: android.view.animation.Animation?) {}
+
+            override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                // Change logo source to logo_orange_right
+                logoImageView.setImageResource(R.drawable.logo_orange_right)
+
+                // Smooth background transition to white
+                val colorFrom = Color.parseColor("#EA3E23") // Replace with actual color value if defined
+                val colorTo = Color.WHITE
+                val colorAnimation = ValueAnimator.ofObject(ArgbEvaluator(), colorFrom, colorTo)
+                colorAnimation.duration = 1000 // 1 second
+                colorAnimation.addUpdateListener { animator ->
+                    findViewById<RelativeLayout>(R.id.main).setBackgroundColor(animator.animatedValue as Int)
+                }
+                colorAnimation.start()
+
+                // Fade-out animation
+                val fadeOutAnimation = AlphaAnimation(1f, 0f)
+                fadeOutAnimation.duration = 2500 // 1 second
+                fadeOutAnimation.fillAfter = true
+                logoImageView.startAnimation(fadeOutAnimation)
+            }
+
+            override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+        })
     }
 }
