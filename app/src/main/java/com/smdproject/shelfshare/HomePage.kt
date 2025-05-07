@@ -3,6 +3,7 @@ package com.smdproject.shelfshare
 import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
@@ -88,14 +89,72 @@ class HomePage : AppCompatActivity() {
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
         })
 
-        // Set click listeners for navigation
+        // Set click listeners for navigation with exit animation
         menuIcon.setOnClickListener {
-            startActivity(Intent(this, MenuPage::class.java))
+            // Fade out and slide out to the right
+            val fadeOut = AlphaAnimation(1f, 0f)
+            fadeOut.duration = 2000
+            val slideOutToRight = TranslateAnimation(
+                0f, 1000f,  // Slide to the right by 1000px
+                0f, 0f
+            )
+            slideOutToRight.duration = 2000
+            val outAnimationSet = AnimationSet(true)
+            outAnimationSet.addAnimation(fadeOut)
+            outAnimationSet.addAnimation(slideOutToRight)
+
+            outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
+                override fun onAnimationStart(animation: android.view.animation.Animation?) {
+                    // Disable the view during animation to prevent interaction
+                    rootLayout.isEnabled = false
+                }
+
+                override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+
+                override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                    // Hide the layout to prevent reappearance
+                    rootLayout.visibility = View.GONE
+                    val intent = Intent(this@HomePage, MenuPage::class.java)
+                    startActivity(intent)
+                    finish() // Finish after starting the new activity
+                }
+            })
+
+            rootLayout.startAnimation(outAnimationSet)
             Toast.makeText(this, "Navigating to MenuPage", Toast.LENGTH_SHORT).show()
         }
 
         searchIcon.setOnClickListener {
-            startActivity(Intent(this, SearchPage::class.java))
+            // Fade out and slide out to the right
+            val fadeOut = AlphaAnimation(1f, 0f)
+            fadeOut.duration = 2000
+            val slideOutToRight = TranslateAnimation(
+                0f, 1000f,  // Slide to the right by 1000px
+                0f, 0f
+            )
+            slideOutToRight.duration = 2000
+            val outAnimationSet = AnimationSet(true)
+            outAnimationSet.addAnimation(fadeOut)
+            outAnimationSet.addAnimation(slideOutToRight)
+
+            outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
+                override fun onAnimationStart(animation: android.view.animation.Animation?) {
+                    // Disable the view during animation to prevent interaction
+                    rootLayout.isEnabled = false
+                }
+
+                override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+
+                override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                    // Hide the layout to prevent reappearance
+                    rootLayout.visibility = View.GONE
+                    val intent = Intent(this@HomePage, SearchPage::class.java)
+                    startActivity(intent)
+                    finish() // Finish after starting the new activity
+                }
+            })
+
+            rootLayout.startAnimation(outAnimationSet)
             Toast.makeText(this, "Navigating to SearchPage", Toast.LENGTH_SHORT).show()
         }
     }

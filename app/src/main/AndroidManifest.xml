@@ -17,6 +17,24 @@
         android:theme="@style/Theme.ShelfShare"
         tools:targetApi="31">
         <activity
+            android:name=".SavedBooksPage"
+            android:exported="false" />
+        <activity
+            android:name=".BarterHistoryPage"
+            android:exported="false" />
+        <activity
+            android:name=".BarterRequestPage"
+            android:exported="false" />
+        <activity
+            android:name=".InventoryPage"
+            android:exported="false" />
+        <activity
+            android:name=".ProfilePage"
+            android:exported="false" />
+        <activity
+            android:name=".MessagesPage"
+            android:exported="false" />
+        <activity
             android:name=".MenuPage"
             android:exported="false" />
         <activity
