@@ -168,6 +168,8 @@ class LogInPage : AppCompatActivity() {
                             override fun onAnimationEnd(animation: android.view.animation.Animation?) {
                                 rootLayout.visibility = View.GONE
                                 // Navigate to a home page or stay logged in (modify intent as needed)
+//                                val intent = Intent(this@LogInPage, EditProfilePage::class.java)
+//                                startActivity(intent)
                                 finish()
                             }
                         })

@@ -185,7 +185,7 @@ class RegisterationPage : AppCompatActivity() {
 
                             override fun onAnimationEnd(animation: android.view.animation.Animation?) {
                                 rootLayout.visibility = View.GONE
-                                val intent = Intent(this@RegisterationPage, LogInPage::class.java)
+                                val intent = Intent(this@RegisterationPage, EditProfilePage::class.java)
                                 startActivity(intent)
                                 finish()
                             }
