@@ -17,6 +17,9 @@
         android:theme="@style/Theme.ShelfShare"
         tools:targetApi="31">
         <activity
+            android:name=".ViewBookPage"
+            android:exported="false" />
+        <activity
             android:name=".ChatPage"
             android:exported="false" />
         <activity
