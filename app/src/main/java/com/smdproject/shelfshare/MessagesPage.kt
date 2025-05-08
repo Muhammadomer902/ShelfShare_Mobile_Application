@@ -8,6 +8,7 @@ import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -22,6 +23,7 @@ class MessagesPage : AppCompatActivity() {
     private lateinit var logoImageView: ImageView
     private lateinit var menuIcon: ImageView
     private lateinit var searchIcon: ImageView
+    private lateinit var chatItem1: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +43,7 @@ class MessagesPage : AppCompatActivity() {
         logoImageView = findViewById(R.id.logoImageView)
         menuIcon = findViewById(R.id.menu_icon)
         searchIcon = findViewById(R.id.search_icon)
+        chatItem1 = findViewById(R.id.chat_item_1)
 
         // Set initial state for animation (white header and orange logo)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
@@ -94,7 +97,7 @@ class MessagesPage : AppCompatActivity() {
         })
 
         // Helper function to apply exit animation and navigate
-        fun applyExitAnimationAndNavigate(targetActivity: Class<*>, toastMessage: String) {
+        fun applyExitAnimationAndNavigate(targetActivity: Class<*>, toastMessage: String, extras: Bundle? = null) {
             val fadeOut = AlphaAnimation(1f, 0f)
             fadeOut.duration = 2000
             val slideOutToRight = TranslateAnimation(0f, 1000f, 0f, 0f)
@@ -113,6 +116,7 @@ class MessagesPage : AppCompatActivity() {
                 override fun onAnimationEnd(animation: android.view.animation.Animation?) {
                     rootLayout.visibility = View.GONE
                     val intent = Intent(this@MessagesPage, targetActivity)
+                    extras?.let { intent.putExtras(it) }
                     startActivity(intent)
                     finish()
                 }
@@ -129,6 +133,14 @@ class MessagesPage : AppCompatActivity() {
 
         searchIcon.setOnClickListener {
             applyExitAnimationAndNavigate(SearchPage::class.java, "Navigating to SearchPage")
+        }
+
+        // Set click listener for the dummy chat item
+        chatItem1.setOnClickListener {
+            val extras = Bundle().apply {
+                putString("chat_user", "John Doe")
+            }
+            applyExitAnimationAndNavigate(ChatPage::class.java, "Navigating to ChatPage", extras)
         }
     }
 }
