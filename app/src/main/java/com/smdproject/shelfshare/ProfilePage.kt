@@ -21,6 +21,7 @@ class ProfilePage : AppCompatActivity() {
     private lateinit var headerLayout: RelativeLayout
     private lateinit var logoImageView: ImageView
     private lateinit var backNavigation: ImageView
+    private lateinit var editProfile: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,11 +40,13 @@ class ProfilePage : AppCompatActivity() {
         headerLayout = findViewById(R.id.header)
         logoImageView = findViewById(R.id.logoImageView)
         backNavigation = findViewById(R.id.back_navigation)
+        editProfile = findViewById(R.id.editProfile)
 
-        // Set initial state for animation (white header and orange logo)
+        // Set initial state for animation (white header and orange logos)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
         logoImageView.setImageResource(R.drawable.logo_orange_right)
         backNavigation.setImageResource(R.drawable.back_navigation)
+        editProfile.setImageResource(R.drawable.edit_profile_orange)
 
         // Create a TranslateAnimation to slide in from the right
         val slideInFromRight = TranslateAnimation(
@@ -66,7 +69,7 @@ class ProfilePage : AppCompatActivity() {
         // Apply the animation to the root layout
         rootLayout.startAnimation(animationSet)
 
-        // Change header background to AppPrimary and logo to white_right after animation ends
+        // Change header background to AppPrimary and logos to white variants after animation ends
         animationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
             override fun onAnimationStart(animation: android.view.animation.Animation?) {}
 
@@ -81,8 +84,9 @@ class ProfilePage : AppCompatActivity() {
                 }
                 colorAnimation.start()
 
-                // Change logo to white_right after animation
+                // Change logos to white variants after animation
                 logoImageView.setImageResource(R.drawable.logo_white_right)
+                editProfile.setImageResource(R.drawable.edit_profile)
             }
 
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
@@ -120,6 +124,11 @@ class ProfilePage : AppCompatActivity() {
         // Set click listener for back navigation
         backNavigation.setOnClickListener {
             applyExitAnimationAndNavigate(MenuPage::class.java, "Navigating to MenuPage")
+        }
+
+        // Set click listener for edit profile navigation
+        editProfile.setOnClickListener {
+            applyExitAnimationAndNavigate(EditProfilePage::class.java, "Navigating to EditProfilePage")
         }
     }
 }
