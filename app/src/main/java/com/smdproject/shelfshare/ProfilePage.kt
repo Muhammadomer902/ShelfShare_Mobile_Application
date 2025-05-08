@@ -1,12 +1,15 @@
 package com.smdproject.shelfshare
 
 import android.animation.ValueAnimator
+import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
 import android.widget.ImageView
 import android.widget.RelativeLayout
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.animation.ArgbEvaluator
@@ -17,6 +20,7 @@ class ProfilePage : AppCompatActivity() {
     private lateinit var rootLayout: RelativeLayout
     private lateinit var headerLayout: RelativeLayout
     private lateinit var logoImageView: ImageView
+    private lateinit var backNavigation: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,10 +38,12 @@ class ProfilePage : AppCompatActivity() {
         rootLayout = findViewById(R.id.main)
         headerLayout = findViewById(R.id.header)
         logoImageView = findViewById(R.id.logoImageView)
+        backNavigation = findViewById(R.id.back_navigation)
 
         // Set initial state for animation (white header and orange logo)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
         logoImageView.setImageResource(R.drawable.logo_orange_right)
+        backNavigation.setImageResource(R.drawable.back_navigation)
 
         // Create a TranslateAnimation to slide in from the right
         val slideInFromRight = TranslateAnimation(
@@ -81,5 +87,39 @@ class ProfilePage : AppCompatActivity() {
 
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
         })
+
+        // Helper function to apply exit animation and navigate
+        fun applyExitAnimationAndNavigate(targetActivity: Class<*>, toastMessage: String) {
+            val fadeOut = AlphaAnimation(1f, 0f)
+            fadeOut.duration = 2000
+            val slideOutToRight = TranslateAnimation(0f, 1000f, 0f, 0f)
+            slideOutToRight.duration = 2000
+            val outAnimationSet = AnimationSet(true)
+            outAnimationSet.addAnimation(fadeOut)
+            outAnimationSet.addAnimation(slideOutToRight)
+
+            outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
+                override fun onAnimationStart(animation: android.view.animation.Animation?) {
+                    rootLayout.isEnabled = false
+                }
+
+                override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+
+                override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                    rootLayout.visibility = View.GONE
+                    val intent = Intent(this@ProfilePage, targetActivity)
+                    startActivity(intent)
+                    finish()
+                }
+            })
+
+            rootLayout.startAnimation(outAnimationSet)
+            Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show()
+        }
+
+        // Set click listener for back navigation
+        backNavigation.setOnClickListener {
+            applyExitAnimationAndNavigate(MenuPage::class.java, "Navigating to MenuPage")
+        }
     }
 }
