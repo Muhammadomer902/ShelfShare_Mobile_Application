@@ -228,7 +228,7 @@ class EditProfilePage : AppCompatActivity() {
                             runOnUiThread {
                                 Glide.with(this@EditProfilePage)
                                     .load(currentProfileImageUrl)
-                                    .placeholder(R.drawable.logo_orange_right)
+                                    .placeholder(R.drawable.default_profile_pic)
                                     .into(profileImage)
                                 Toast.makeText(this@EditProfilePage, "Profile image fetched", Toast.LENGTH_SHORT).show()
                             }
@@ -314,7 +314,7 @@ class EditProfilePage : AppCompatActivity() {
                                     runOnUiThread {
                                         Glide.with(this@EditProfilePage)
                                             .load(currentProfileImageUrl)
-                                            .placeholder(R.drawable.logo_orange_right)
+                                            .placeholder(R.drawable.default_profile_pic)
                                             .into(profileImage)
                                         Toast.makeText(this@EditProfilePage, "Profile image uploaded", Toast.LENGTH_SHORT).show()
                                     }
@@ -443,6 +443,9 @@ class EditProfilePage : AppCompatActivity() {
 
                         override fun onAnimationEnd(animation: android.view.animation.Animation?) {
                             rootLayout.visibility = View.GONE
+                            val intent = Intent(this@EditProfilePage, ProfilePage::class.java)
+                            startActivity(intent)
+                            finish()
                         }
                     })
 
