@@ -7,21 +7,33 @@ import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.RelativeLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.animation.ArgbEvaluator
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearSnapHelper
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
+import com.bumptech.glide.Glide
+import de.hdodenhof.circleimageview.CircleImageView
 
 class ProfilePage : AppCompatActivity() {
+    private lateinit var auth: FirebaseAuth
+    private lateinit var database: DatabaseReference
     private lateinit var rootLayout: RelativeLayout
     private lateinit var headerLayout: RelativeLayout
     private lateinit var logoImageView: ImageView
     private lateinit var backNavigation: ImageView
     private lateinit var editProfile: ImageView
+    private lateinit var bookAdapter: BookAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,12 +47,27 @@ class ProfilePage : AppCompatActivity() {
             insets
         }
 
+        // Initialize Firebase
+        auth = FirebaseAuth.getInstance()
+        database = FirebaseDatabase.getInstance().reference
+        val userId = auth.currentUser?.uid ?: return
+
         // Initialize views
         rootLayout = findViewById(R.id.main)
         headerLayout = findViewById(R.id.header)
         logoImageView = findViewById(R.id.logoImageView)
         backNavigation = findViewById(R.id.back_navigation)
         editProfile = findViewById(R.id.editProfile)
+
+        // Set up RecyclerView for books
+        val recyclerView = findViewById<RecyclerView>(R.id.bookRecyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        bookAdapter = BookAdapter()
+        recyclerView.adapter = bookAdapter
+
+        // Add snapping to show one book at a time
+        val snapHelper = LinearSnapHelper()
+        snapHelper.attachToRecyclerView(recyclerView)
 
         // Set initial state for animation (white header and orange logos)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
@@ -92,6 +119,75 @@ class ProfilePage : AppCompatActivity() {
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
         })
 
+        // Load profile picture, name, and bio
+        database.child("users").child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val profilePublicId = snapshot.child("profilePublicId").getValue(String::class.java)
+                val name = snapshot.child("name").getValue(String::class.java) ?: "User"
+                val bio = snapshot.child("bio").getValue(String::class.java) ?: ""
+
+                // Load profile picture using Cloudinary URL
+                if (profilePublicId?.isNotEmpty() == true) {
+                    val profileImageUrl = "https://res.cloudinary.com/ddpt74pga/image/upload/$profilePublicId"
+                    Glide.with(this@ProfilePage)
+                        .load(profileImageUrl)
+                        .placeholder(R.drawable.default_profile_pic)
+                        .into(findViewById(R.id.ProfilePic))
+                }
+
+                // Load name
+                findViewById<TextView>(R.id.Name).text = name
+
+                // Load bio if it exists
+                if (bio.isNotEmpty()) {
+                    findViewById<TextView>(R.id.Bio).text = bio
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@ProfilePage, "Failed to load profile data: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+
+        // Load user's inventory and fetch book details
+        val bookList = mutableListOf<Book>()
+        database.child("Inventory").child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (!snapshot.exists()) {
+                    Toast.makeText(this@ProfilePage, "No books in inventory", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                snapshot.children.forEach { bookSnapshot ->
+                    val bookId = bookSnapshot.key ?: return@forEach
+                    // Fetch book details from /book/{bookid}
+                    database.child("book").child(bookId).addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(bookSnapshot: DataSnapshot) {
+                            val image = bookSnapshot.child("image").getValue(String::class.java)
+                            val name = bookSnapshot.child("name").getValue(String::class.java)
+                            val author = bookSnapshot.child("author").getValue(String::class.java)
+                            bookList.add(Book(bookId, image, name, author))
+                            bookAdapter.submitBooks(bookList)
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            if (error.code == DatabaseError.PERMISSION_DENIED) {
+                                Toast.makeText(this@ProfilePage, "Permission denied. Please log in again.", Toast.LENGTH_SHORT).show()
+                                startActivity(Intent(this@ProfilePage, LogInPage::class.java))
+                                finish()
+                            } else {
+                                Toast.makeText(this@ProfilePage, "Failed to load inventory: ${error.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    })
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@ProfilePage, "Failed to load inventory: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+
         // Helper function to apply exit animation and navigate
         fun applyExitAnimationAndNavigate(targetActivity: Class<*>, toastMessage: String) {
             val fadeOut = AlphaAnimation(1f, 0f)
@@ -129,6 +225,11 @@ class ProfilePage : AppCompatActivity() {
         // Set click listener for edit profile navigation
         editProfile.setOnClickListener {
             applyExitAnimationAndNavigate(EditProfilePage::class.java, "Navigating to EditProfilePage")
+        }
+
+        // Inventory button listener (placeholder for future functionality)
+        findViewById<Button>(R.id.InventoryButton).setOnClickListener {
+            applyExitAnimationAndNavigate(InventoryPage::class.java, "View your inventory")
         }
     }
 }
