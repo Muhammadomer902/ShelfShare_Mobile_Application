@@ -12,6 +12,8 @@ data class Book(val bookId: String, val image: String?, val name: String?, val a
 
 class BookAdapter(private var books: List<Book> = emptyList()) : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
 
+    private var onItemClickListener: ((Book) -> Unit)? = null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BookViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.profile_book, parent, false)
         return BookViewHolder(view)
@@ -29,10 +31,23 @@ class BookAdapter(private var books: List<Book> = emptyList()) : RecyclerView.Ad
         notifyDataSetChanged()
     }
 
-    class BookViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    fun setOnItemClickListener(listener: (Book) -> Unit) {
+        onItemClickListener = listener
+    }
+
+    inner class BookViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val bookImage: ImageView = itemView.findViewById(R.id.bookImage)
         private val bookName: TextView = itemView.findViewById(R.id.bookName)
         private val bookAuthor: TextView = itemView.findViewById(R.id.bookAuthor)
+
+        init {
+            itemView.setOnClickListener {
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onItemClickListener?.invoke(books[position])
+                }
+            }
+        }
 
         fun bind(book: Book) {
             // Use Unsplash Source Image API to fetch book cover image based on the book's image query

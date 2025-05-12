@@ -52,8 +52,41 @@
 
             </RelativeLayout>
 
+            <!-- RecyclerView for Books -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/bookRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/header"
+                android:layout_marginTop="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp" />
+
         </RelativeLayout>
 
     </ScrollView>
+
+    <RelativeLayout
+        android:id="@+id/addBook"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <View
+            android:background="@drawable/orange_circle"
+            android:layout_width="100dp"
+            android:layout_height="100dp"/>
+
+        <View
+            android:background="@drawable/plus_button"
+            android:layout_centerInParent="true"
+            android:layout_width="80dp"
+            android:layout_height="80dp"/>
+
+    </RelativeLayout>
 
 </RelativeLayout>
