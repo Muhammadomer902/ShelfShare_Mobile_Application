@@ -14,6 +14,9 @@ import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
 import com.bumptech.glide.request.RequestOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import okhttp3.*
+import org.json.JSONObject
+import java.io.IOException
 import java.net.URLEncoder
 
 data class InventoryBook(val bookId: String, val image: String?, val name: String?, val author: String?, val description: String?, val categories: List<String>?)
@@ -23,13 +26,20 @@ class InventoryBookAdapter(
     private val onBookDeleted: () -> Unit
 ) : RecyclerView.Adapter<InventoryBookAdapter.BookViewHolder>() {
 
+    private var onItemClickListener: ((InventoryBook) -> Unit)? = null
+    private val client = OkHttpClient()
+    private val GOOGLE_API_KEY = "AIzaSyDW-Hweo3zlykmB-PGYtywJOdDVMTjijlk" // Your Google Books API key
+    private val TAG = "InventoryBookAdapter"
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BookViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.inventory_book, parent, false)
+        Log.d(TAG, "Creating ViewHolder for position: $viewType")
         return BookViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: BookViewHolder, position: Int) {
         val book = books[position]
+        Log.d(TAG, "Binding book at position $position: ${book.name}, Author: ${book.author}, Description: ${book.description}, Categories: ${book.categories}")
         holder.bind(book)
     }
 
@@ -38,7 +48,12 @@ class InventoryBookAdapter(
     fun submitBooks(newBooks: List<InventoryBook>) {
         books.clear()
         books.addAll(newBooks)
+        Log.d(TAG, "Submitting ${books.size} books to adapter")
         notifyDataSetChanged()
+    }
+
+    fun setOnItemClickListener(listener: (InventoryBook) -> Unit) {
+        onItemClickListener = listener
     }
 
     inner class BookViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -50,22 +65,32 @@ class InventoryBookAdapter(
         private val deleteButton: Button = itemView.findViewById(R.id.deleteButton)
 
         fun bind(book: InventoryBook) {
-            // Use Unsplash Source Image API to fetch book cover image based on the book's image query
-            val imageQuery = book.image?.takeIf { it.isNotEmpty() } ?: "${book.name} book cover"
-            val encodedQuery = URLEncoder.encode(imageQuery, "UTF-8").replace("+", "%20")
-            val usiUrl = "https://source.unsplash.com/100x150/?$encodedQuery"
-            Log.d("InventoryBookAdapter", "Loading image for book '${book.name}' with URL: $usiUrl")
+            val bookTitle = book.name?.takeIf { it.isNotEmpty() } ?: "Unknown Title"
+            Log.d(TAG, "Binding book: $bookTitle with data - Author: ${book.author}, Description: ${book.description}, Categories: ${book.categories}")
+            fetchBookCoverFromGoogleBooks(bookTitle) { imageUrl ->
+                itemView.post {
+                    if (imageUrl != null) {
+                        Log.d(TAG, "Loading image URL: $imageUrl")
+                        Glide.with(itemView.context)
+                            .asBitmap()
+                            .load(imageUrl)
+                            .apply(RequestOptions()
+                                .placeholder(R.drawable.default_book_cover)
+                                .error(R.drawable.default_book_cover))
+                            .transition(BitmapTransitionOptions.withCrossFade())
+                            .into(bookImage)
+                    } else {
+                        Log.w(TAG, "No image URL found for: $bookTitle")
+                        Glide.with(itemView.context)
+                            .asBitmap()
+                            .load(R.drawable.default_book_cover)
+                            .transition(BitmapTransitionOptions.withCrossFade())
+                            .into(bookImage)
+                    }
+                }
+            }
 
-            Glide.with(itemView.context)
-                .asBitmap()
-                .load(usiUrl)
-                .apply(RequestOptions()
-                    .placeholder(R.drawable.default_book_cover)
-                    .error(R.drawable.default_book_cover))
-                .transition(BitmapTransitionOptions.withCrossFade())
-                .into(bookImage)
-
-            bookName.text = book.name?.takeIf { it.isNotEmpty() } ?: "Unknown Title"
+            bookName.text = bookTitle
             bookAuthor.text = book.author?.takeIf { it.isNotEmpty() } ?: "Unknown Author"
             bookDescription.text = book.description?.takeIf { it.isNotEmpty() } ?: "No description available"
             bookCategory.text = book.categories?.joinToString(", ")?.takeIf { it.isNotEmpty() } ?: "No categories"
@@ -88,6 +113,60 @@ class InventoryBookAdapter(
                         Toast.makeText(itemView.context, "Failed to delete book: ${error.message}", Toast.LENGTH_SHORT).show()
                     }
             }
+        }
+
+        private fun fetchBookCoverFromGoogleBooks(title: String, callback: (String?) -> Unit) {
+            val encodedTitle = URLEncoder.encode(title, "UTF-8").replace("+", "%20")
+            val url = "https://www.googleapis.com/books/v1/volumes?q=intitle:$encodedTitle&key=$GOOGLE_API_KEY"
+            Log.d(TAG, "Fetching book cover from: $url")
+
+            val request = Request.Builder()
+                .url(url)
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e(TAG, "API call failed: ${e.message}")
+                    itemView.post { callback(null) }
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    try {
+                        if (response.isSuccessful) {
+                            val responseBody = response.body?.string()
+                            Log.d(TAG, "API response: $responseBody")
+                            if (responseBody.isNullOrEmpty()) {
+                                Log.w(TAG, "Empty response body")
+                                itemView.post { callback(null) }
+                                return
+                            }
+
+                            val json = JSONObject(responseBody)
+                            val items = json.optJSONArray("items")
+                            if (items == null || items.length() == 0) {
+                                Log.w(TAG, "No items found for title: $title")
+                                itemView.post { callback(null) }
+                                return
+                            }
+
+                            val firstItem = items.getJSONObject(0)
+                            val volumeInfo = firstItem.optJSONObject("volumeInfo")
+                            val imageLinks = volumeInfo?.optJSONObject("imageLinks")
+                            val thumbnail = imageLinks?.optString("thumbnail")?.replace("http://", "https://")
+                            Log.d(TAG, "Thumbnail URL: $thumbnail")
+                            itemView.post { callback(thumbnail) }
+                        } else {
+                            Log.e(TAG, "Unsuccessful response: ${response.code} - ${response.body?.string()}")
+                            itemView.post { callback(null) }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing response: ${e.message}")
+                        itemView.post { callback(null) }
+                    } finally {
+                        response.close()
+                    }
+                }
+            })
         }
     }
 }

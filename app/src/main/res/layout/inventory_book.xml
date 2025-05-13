@@ -19,27 +19,34 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp">
 
-        <TextView
-            android:id="@+id/bookName"
+        <RelativeLayout
+            android:id="@+id/bookNameLayout"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Book Name"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@color/AppPrimary" />
+            android:layout_height="wrap_content">
 
-        <TextView
-            android:id="@+id/bookAuthor"
-            android:layout_toRightOf="@+id/bookName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Author"
-            android:textSize="20sp"
-            android:textColor="@color/AppPrimary" />
+            <TextView
+                android:id="@+id/bookName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Book Name"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/AppPrimary" />
+
+            <TextView
+                android:id="@+id/bookAuthor"
+                android:layout_toRightOf="@+id/bookName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Author"
+                android:textSize="14sp"
+                android:textColor="@color/AppPrimary" />
+
+        </RelativeLayout>
 
         <TextView
             android:id="@+id/bookDescription"
-            android:layout_below="@+id/bookName"
+            android:layout_below="@+id/bookNameLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
@@ -52,7 +59,7 @@
         <View
             android:background="@color/AppPrimary"
             android:layout_width="5dp"
-            android:layout_toRightOf="@id/bookAuthor"
+            android:layout_toRightOf="@id/bookNameLayout"
             android:layout_marginHorizontal="10dp"
             android:layout_height="150dp"/>
 
@@ -88,5 +95,12 @@
         android:id="@+id/deleteButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
+
+    <View
+        android:background="@color/AppPrimary"
+        android:layout_width="wrap_content"
+        android:layout_below="@id/deleteButton"
+        android:layout_marginHorizontal="10dp"
+        android:layout_height="5dp"/>
 
 </RelativeLayout>

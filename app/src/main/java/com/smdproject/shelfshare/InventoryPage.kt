@@ -29,21 +29,19 @@ class InventoryPage : AppCompatActivity() {
     private lateinit var searchIcon: ImageView
     private lateinit var addBookButton: RelativeLayout
     private lateinit var bookAdapter: InventoryBookAdapter
-    private val bookList = mutableListOf<InventoryBook>()
+    private val bookList = mutableListOf<InventoryBook>() // Ensure this is the list used everywhere
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_inventory_page)
 
-        // Handle window insets
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
 
-        // Initialize Firebase
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().reference
         val userId = auth.currentUser?.uid ?: run {
@@ -53,7 +51,6 @@ class InventoryPage : AppCompatActivity() {
             return
         }
 
-        // Initialize views
         rootLayout = findViewById(R.id.main)
         headerLayout = findViewById(R.id.header)
         logoImageView = findViewById(R.id.logoImageView)
@@ -61,72 +58,47 @@ class InventoryPage : AppCompatActivity() {
         searchIcon = findViewById(R.id.search_icon)
         addBookButton = findViewById(R.id.addBook)
 
-        // Set up RecyclerView for books
         val recyclerView = findViewById<RecyclerView>(R.id.bookRecyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
         bookAdapter = InventoryBookAdapter(bookList) { loadInventory(userId) }
-        recyclerView.adapter = bookAdapter
+        recyclerView.adapter = bookAdapter // Ensure adapter is attached
 
-        // Set initial state for animation (white header and orange logo)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
         logoImageView.setImageResource(R.drawable.logo_orange_right)
         menuIcon.setImageResource(R.drawable.menu_logo)
         searchIcon.setImageResource(R.drawable.search_logo)
 
-        // Create a TranslateAnimation to slide in from the right
-        val slideInFromRight = TranslateAnimation(
-            1000f,  // Start from 1000px to the right
-            0f,     // End at its normal position
-            0f,     // No vertical movement
-            0f
-        )
-        slideInFromRight.duration = 1000 // 1 second
-
-        // Create an AlphaAnimation for fading in
+        val slideInFromRight = TranslateAnimation(1000f, 0f, 0f, 0f)
+        slideInFromRight.duration = 1000
         val fadeIn = AlphaAnimation(0f, 1f)
-        fadeIn.duration = 1000 // 1 second
-
-        // Combine both animations into an AnimationSet
+        fadeIn.duration = 1000
         val animationSet = AnimationSet(true)
         animationSet.addAnimation(slideInFromRight)
         animationSet.addAnimation(fadeIn)
-
-        // Apply the animation to the root layout
         rootLayout.startAnimation(animationSet)
 
-        // Change header background to AppPrimary and logo to white_right after animation ends
         animationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
             override fun onAnimationStart(animation: android.view.animation.Animation?) {}
-
             override fun onAnimationEnd(animation: android.view.animation.Animation?) {
-                // Fade header background from white to AppPrimary
                 val colorFrom = android.graphics.Color.WHITE
                 val colorTo = resources.getColor(R.color.AppPrimary, theme)
                 val colorAnimation = ValueAnimator.ofObject(android.animation.ArgbEvaluator(), colorFrom, colorTo)
-                colorAnimation.duration = 1000 // 1 second
+                colorAnimation.duration = 1000
                 colorAnimation.addUpdateListener { animator ->
                     headerLayout.setBackgroundColor(animator.animatedValue as Int)
                 }
                 colorAnimation.start()
-
-                // Change logo and icons to white variants after animation
                 logoImageView.setImageResource(R.drawable.logo_white_right)
                 menuIcon.setImageResource(R.drawable.menu_logo)
                 searchIcon.setImageResource(R.drawable.search_logo)
             }
-
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
         })
 
-        // Load user's inventory
         loadInventory(userId)
 
-        // Set click listener for Add Book button
-        addBookButton.setOnClickListener {
-            showAddBookDialog(userId)
-        }
+        addBookButton.setOnClickListener { showAddBookDialog(userId) }
 
-        // Helper function to apply exit animation and navigate
         fun applyExitAnimationAndNavigate(targetActivity: Class<*>, toastMessage: String) {
             val fadeOut = AlphaAnimation(1f, 0f)
             fadeOut.duration = 2000
@@ -135,59 +107,40 @@ class InventoryPage : AppCompatActivity() {
             val outAnimationSet = AnimationSet(true)
             outAnimationSet.addAnimation(fadeOut)
             outAnimationSet.addAnimation(slideOutToRight)
-
             outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
-                override fun onAnimationStart(animation: android.view.animation.Animation?) {
-                    rootLayout.isEnabled = false
-                }
-
+                override fun onAnimationStart(animation: android.view.animation.Animation?) { rootLayout.isEnabled = false }
                 override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
-
                 override fun onAnimationEnd(animation: android.view.animation.Animation?) {
                     rootLayout.visibility = View.GONE
-                    val intent = Intent(this@InventoryPage, targetActivity)
-                    startActivity(intent)
+                    startActivity(Intent(this@InventoryPage, targetActivity))
                     finish()
                 }
             })
-
             rootLayout.startAnimation(outAnimationSet)
             Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show()
         }
 
-        // Set click listeners for navigation
-        menuIcon.setOnClickListener {
-            applyExitAnimationAndNavigate(MenuPage::class.java, "Navigating to MenuPage")
-        }
-
-        searchIcon.setOnClickListener {
-            applyExitAnimationAndNavigate(SearchPage::class.java, "Navigating to SearchPage")
-        }
+        menuIcon.setOnClickListener { applyExitAnimationAndNavigate(MenuPage::class.java, "Navigating to MenuPage") }
+        searchIcon.setOnClickListener { applyExitAnimationAndNavigate(SearchPage::class.java, "Navigating to SearchPage") }
     }
 
     private fun loadInventory(userId: String) {
-        bookList.clear()
+        bookList.clear() // Ensure list is cleared before loading
         Log.d("InventoryPage", "Fetching inventory for user: $userId")
-        Toast.makeText(this, "Fetching inventory for user: $userId", Toast.LENGTH_SHORT).show()
         database.child("Inventory").child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!snapshot.exists()) {
                     Log.d("InventoryPage", "No books found in inventory for user: $userId")
-                    Toast.makeText(this@InventoryPage, "No books found in inventory for user: $userId", Toast.LENGTH_SHORT).show()
                     bookAdapter.submitBooks(bookList)
                     return
                 }
-
                 Log.d("InventoryPage", "Found ${snapshot.childrenCount} book IDs in inventory")
-                Toast.makeText(this@InventoryPage, "Found ${snapshot.childrenCount} book IDs", Toast.LENGTH_SHORT).show()
                 val totalBooks = snapshot.childrenCount.toInt()
                 var booksProcessed = 0
 
                 snapshot.children.forEach { bookSnapshot ->
                     val bookId = bookSnapshot.key ?: return@forEach
                     Log.d("InventoryPage", "Processing bookId: $bookId")
-                    Toast.makeText(this@InventoryPage, "Processing bookId: $bookId", Toast.LENGTH_SHORT).show()
-                    // Fetch book details from /book/{bookid}
                     database.child("book").child(bookId).addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(bookSnapshot: DataSnapshot) {
                             if (bookSnapshot.exists()) {
@@ -196,49 +149,34 @@ class InventoryPage : AppCompatActivity() {
                                 val author = bookSnapshot.child("author").getValue(String::class.java)
                                 val description = bookSnapshot.child("description").getValue(String::class.java)
                                 val categories = bookSnapshot.child("categories").children.mapNotNull { it.getValue(String::class.java) }
-                                bookList.add(InventoryBook(bookId, image, name, author, description, categories))
+                                val book = InventoryBook(bookId, image, name, author, description, categories)
+                                bookList.add(book) // Add to the same list instance
                                 Log.d("InventoryPage", "Added book to list: $name")
-                                Toast.makeText(this@InventoryPage, "Added book to list: $name", Toast.LENGTH_SHORT).show()
-                                // Add a Toast to verify bookList content
-                                Toast.makeText(this@InventoryPage, "Current bookList size: ${bookList.size}", Toast.LENGTH_SHORT).show()
                             } else {
                                 Log.w("InventoryPage", "Book not found in /book for bookId: $bookId")
-                                Toast.makeText(this@InventoryPage, "Book not found in /book for bookId: $bookId", Toast.LENGTH_SHORT).show()
                             }
-
                             booksProcessed++
                             if (booksProcessed == totalBooks) {
                                 Log.d("InventoryPage", "All books processed, updating adapter with ${bookList.size} books")
-                                Toast.makeText(this@InventoryPage, "All books processed, updating adapter with ${bookList.size} books", Toast.LENGTH_SHORT).show()
-                                // Add a Toast to confirm adapter update
-                                Toast.makeText(this@InventoryPage, "Adapter updated with ${bookList.size} items", Toast.LENGTH_SHORT).show()
-                                bookAdapter.submitBooks(bookList)
+                                bookAdapter.submitBooks(bookList.toList()) // Use toList() to pass a copy
                             }
                         }
-
                         override fun onCancelled(error: DatabaseError) {
                             Log.e("InventoryPage", "Failed to load book $bookId: ${error.message}")
-                            Toast.makeText(this@InventoryPage, "Failed to load book $bookId: ${error.message}", Toast.LENGTH_SHORT).show()
                             booksProcessed++
                             if (booksProcessed == totalBooks) {
                                 Log.d("InventoryPage", "All books processed (with errors), updating adapter with ${bookList.size} books")
-                                Toast.makeText(this@InventoryPage, "All books processed (with errors), updating adapter with ${bookList.size} books", Toast.LENGTH_SHORT).show()
-                                bookAdapter.submitBooks(bookList)
+                                bookAdapter.submitBooks(bookList.toList())
                             }
                         }
                     })
                 }
             }
-
             override fun onCancelled(error: DatabaseError) {
                 Log.e("InventoryPage", "Failed to load inventory: ${error.message}")
-                Toast.makeText(this@InventoryPage, "Failed to load inventory: ${error.message}", Toast.LENGTH_SHORT).show()
                 if (error.code == DatabaseError.PERMISSION_DENIED) {
-                    Toast.makeText(this@InventoryPage, "Permission denied. Please log in again.", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this@InventoryPage, LogInPage::class.java))
                     finish()
-                } else {
-                    Toast.makeText(this@InventoryPage, "Failed to load inventory: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         })
@@ -271,13 +209,9 @@ class InventoryPage : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Split categories by comma and trim whitespace
             val categories = categoriesInput.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-
-            // Generate a new book ID
             val bookId = database.child("book").push().key ?: return@setOnClickListener
 
-            // Create book data
             val bookData = mapOf(
                 "image" to (if (imageQuery.isNotEmpty()) imageQuery else null),
                 "name" to name,
@@ -286,16 +220,12 @@ class InventoryPage : AppCompatActivity() {
                 "categories" to categories
             )
 
-            // Save the book to /book/{bookid}
             database.child("book").child(bookId).setValue(bookData)
                 .addOnSuccessListener {
-                    Log.d("InventoryPage", "Book added to /book with ID: $bookId")
-                    // Add the book to the user's inventory
                     database.child("Inventory").child(userId).child(bookId).setValue(true)
                         .addOnSuccessListener {
-                            Log.d("InventoryPage", "Book added to /Inventory/$userId/$bookId")
                             Toast.makeText(this, "Book added successfully", Toast.LENGTH_SHORT).show()
-                            loadInventory(userId) // Refresh the list
+                            loadInventory(userId)
                             dialog.dismiss()
                         }
                         .addOnFailureListener { error ->
@@ -309,10 +239,7 @@ class InventoryPage : AppCompatActivity() {
                 }
         }
 
-        cancelButton.setOnClickListener {
-            dialog.dismiss()
-        }
-
+        cancelButton.setOnClickListener { dialog.dismiss() }
         dialog.show()
     }
 }
