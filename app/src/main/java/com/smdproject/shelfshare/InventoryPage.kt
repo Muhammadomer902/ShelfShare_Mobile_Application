@@ -211,13 +211,15 @@ class InventoryPage : AppCompatActivity() {
 
             val categories = categoriesInput.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val bookId = database.child("book").push().key ?: return@setOnClickListener
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@setOnClickListener
 
             val bookData = mapOf(
                 "image" to (if (imageQuery.isNotEmpty()) imageQuery else null),
                 "name" to name,
                 "author" to (if (author.isNotEmpty()) author else null),
                 "description" to (if (description.isNotEmpty()) description else null),
-                "categories" to categories
+                "categories" to categories,
+                "ownerId" to userId // Add ownerId to the book node
             )
 
             database.child("book").child(bookId).setValue(bookData)
