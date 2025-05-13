@@ -114,8 +114,8 @@ class ViewBookPage : AppCompatActivity() {
                                 .load(imageUrl)
                                 .apply(
                                     RequestOptions()
-                                    .placeholder(R.drawable.default_book_cover)
-                                    .error(R.drawable.default_book_cover))
+                                        .placeholder(R.drawable.default_book_cover)
+                                        .error(R.drawable.default_book_cover))
                                 .transition(BitmapTransitionOptions.withCrossFade())
                                 .into(bookImage)
                         } else {
@@ -127,25 +127,32 @@ class ViewBookPage : AppCompatActivity() {
 
                 // Fetch owner details if ownerId exists
                 if (ownerId != null) {
+                    Log.d(TAG, "Fetching owner details for ownerId: $ownerId")
                     database.child("users").child(ownerId).addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(userSnapshot: DataSnapshot) {
-                            val ownerName = userSnapshot.child("name").getValue(String::class.java) ?: "Unknown User"
-                            val ownerPicUrl = userSnapshot.child("profilePublicId").getValue(String::class.java)
-                            bookOwnerName.text = ownerName
-                            val profileImageUrl = "https://res.cloudinary.com/ddpt74pga/image/upload/$ownerPicUrl"
-                            if (ownerPicUrl != null) {
-                                Glide.with(this@ViewBookPage)
-                                    .load(profileImageUrl)
-                                    .placeholder(R.drawable.default_profile_pic)
-                                    .error(R.drawable.default_profile_pic)
-                                    .into(bookOwnerPic)
+                            if (userSnapshot.exists()) {
+                                val ownerName = userSnapshot.child("name").getValue(String::class.java) ?: "Unknown User"
+                                val ownerPicUrl = userSnapshot.child("profilePublicId").getValue(String::class.java)
+                                bookOwnerName.text = ownerName
+                                val profileImageUrl = if (ownerPicUrl != null) "https://res.cloudinary.com/ddpt74pga/image/upload/$ownerPicUrl" else null
+                                if (profileImageUrl != null) {
+                                    Glide.with(this@ViewBookPage)
+                                        .load(profileImageUrl)
+                                        .placeholder(R.drawable.default_profile_pic)
+                                        .error(R.drawable.default_profile_pic)
+                                        .into(bookOwnerPic)
+                                } else {
+                                    bookOwnerPic.setImageResource(R.drawable.default_profile_pic)
+                                }
                             } else {
+                                Log.w(TAG, "User data not found for ownerId: $ownerId")
+                                bookOwnerName.text = "Unknown User"
                                 bookOwnerPic.setImageResource(R.drawable.default_profile_pic)
                             }
                         }
 
                         override fun onCancelled(error: DatabaseError) {
-                            Log.e(TAG, "Failed to load owner: ${error.message}")
+                            Log.e(TAG, "Permission denied or error loading owner data for ownerId: $ownerId - ${error.message}")
                             bookOwnerName.text = "Unknown User"
                             bookOwnerPic.setImageResource(R.drawable.default_profile_pic)
                         }
