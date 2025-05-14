@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/bookNameInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Book Name"
+        android:inputType="text"
+        android:textColor="@color/AppPrimary"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/bookAuthorInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Author"
+        android:inputType="text"
+        android:textColor="@color/AppPrimary"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/bookDescriptionInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Description"
+        android:inputType="textMultiLine"
+        android:lines="3"
+        android:maxLines="5"
+        android:textColor="@color/AppPrimary"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/bookCategoriesInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Categories (comma-separated)"
+        android:inputType="text"
+        android:textColor="@color/AppPrimary"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/bookImageQueryInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Book Cover Image Query (e.g., book title)"
+        android:inputType="text"
+        android:textColor="@color/AppPrimary"
+        android:textSize="16sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/cancelButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textColor="@color/AppPrimary"
+            android:background="@android:color/transparent" />
+
+        <Button
+            android:id="@+id/saveButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Save"
+            android:textColor="@color/white"
+            android:background="@drawable/button_background" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -3,10 +3,13 @@ package com.smdproject.shelfshare
 import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
+import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.RelativeLayout
 import android.widget.Toast
@@ -15,12 +18,24 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.animation.ArgbEvaluator
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.FirebaseDatabase
 
 class SearchPage : AppCompatActivity() {
     private lateinit var rootLayout: RelativeLayout
     private lateinit var headerLayout: RelativeLayout
     private lateinit var logoImageView: ImageView
     private lateinit var menuIcon: ImageView
+    private lateinit var searchInput: EditText
+    private lateinit var searchButton: Button
+    private lateinit var booksRecyclerView: RecyclerView
+    private lateinit var bookAdapter: BookAdapter
+    private lateinit var database: com.google.firebase.database.DatabaseReference
+    private val TAG = "SearchPage"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,11 +49,22 @@ class SearchPage : AppCompatActivity() {
             insets
         }
 
+        // Initialize Firebase
+        database = FirebaseDatabase.getInstance().reference
+
         // Initialize views
         rootLayout = findViewById(R.id.main)
         headerLayout = findViewById(R.id.header)
         logoImageView = findViewById(R.id.logoImageView)
         menuIcon = findViewById(R.id.menu_icon)
+        searchInput = findViewById(R.id.Search)
+        searchButton = findViewById(R.id.SearchLogo)
+        booksRecyclerView = findViewById(R.id.booksRecyclerView)
+
+        // Set up RecyclerView
+        bookAdapter = BookAdapter()
+        booksRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
+        booksRecyclerView.adapter = bookAdapter
 
         // Set initial state for animation (white header and orange logo)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
@@ -90,7 +116,7 @@ class SearchPage : AppCompatActivity() {
         })
 
         // Helper function to apply exit animation and navigate
-        fun applyExitAnimationAndNavigate(targetActivity: Class<*>, toastMessage: String) {
+        fun applyExitAnimationAndNavigate(targetActivity: Class<*>, toastMessage: String, book: Book? = null) {
             val fadeOut = AlphaAnimation(1f, 0f)
             fadeOut.duration = 2000
             val slideOutToRight = TranslateAnimation(0f, 1000f, 0f, 0f)
@@ -108,7 +134,15 @@ class SearchPage : AppCompatActivity() {
 
                 override fun onAnimationEnd(animation: android.view.animation.Animation?) {
                     rootLayout.visibility = View.GONE
-                    val intent = Intent(this@SearchPage, targetActivity)
+                    val intent = if (book != null) {
+                        Intent(this@SearchPage, ViewBookPage::class.java).apply {
+                            putExtra("book_title", book.name)
+                            putExtra("book_author", book.author)
+                            putExtra("book_id", book.bookId)
+                        }
+                    } else {
+                        Intent(this@SearchPage, targetActivity)
+                    }
                     startActivity(intent)
                     finish()
                 }
@@ -122,5 +156,53 @@ class SearchPage : AppCompatActivity() {
         menuIcon.setOnClickListener {
             applyExitAnimationAndNavigate(MenuPage::class.java, "Navigating to MenuPage")
         }
+
+        // Set click listener for search button
+        searchButton.setOnClickListener {
+            val title = searchInput.text.toString().trim()
+            if (title.isNotEmpty()) {
+                searchBooksByName(title)
+            } else {
+                Toast.makeText(this, "Please enter a book title", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Add click listener to book items
+        bookAdapter.setOnItemClickListener { book ->
+            applyExitAnimationAndNavigate(ViewBookPage::class.java, "Navigating to ViewBookPage", book)
+        }
+    }
+
+    private fun searchBooksByName(title: String) {
+        val bookList = mutableListOf<Book>()
+        database.child("book").orderByChild("name").startAt(title).endAt(title + "\uf8ff")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (!snapshot.exists()) {
+                        Toast.makeText(this@SearchPage, "No books found", Toast.LENGTH_SHORT).show()
+                        bookAdapter.submitBooks(emptyList())
+                        return
+                    }
+
+                    snapshot.children.forEach { bookSnapshot ->
+                        val bookId = bookSnapshot.key ?: return@forEach
+                        val image = bookSnapshot.child("image").getValue(String::class.java)
+                        val name = bookSnapshot.child("name").getValue(String::class.java)
+                        val author = bookSnapshot.child("author").getValue(String::class.java)
+                        bookList.add(Book(bookId, image, name, author))
+                    }
+
+                    bookAdapter.submitBooks(bookList)
+                    if (bookList.isEmpty()) {
+                        Toast.makeText(this@SearchPage, "No books found matching '$title'", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Search failed: ${error.message}")
+                    Toast.makeText(this@SearchPage, "Search failed: ${error.message}", Toast.LENGTH_SHORT).show()
+                    bookAdapter.submitBooks(emptyList())
+                }
+            })
     }
 }

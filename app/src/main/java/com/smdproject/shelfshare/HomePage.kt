@@ -13,8 +13,13 @@ import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.animation.ArgbEvaluator
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearSnapHelper
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.database.*
 
 class HomePage : AppCompatActivity() {
     private lateinit var rootLayout: RelativeLayout
@@ -22,7 +27,11 @@ class HomePage : AppCompatActivity() {
     private lateinit var logoImageView: ImageView
     private lateinit var menuIcon: ImageView
     private lateinit var searchIcon: ImageView
-    private lateinit var bookItem1: LinearLayout
+    private lateinit var fictionRecyclerView: RecyclerView
+    private lateinit var nonFictionRecyclerView: RecyclerView
+    private lateinit var fictionAdapter: BookAdapter
+    private lateinit var nonFictionAdapter: BookAdapter
+    private lateinit var database: DatabaseReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,13 +45,29 @@ class HomePage : AppCompatActivity() {
             insets
         }
 
+        // Initialize Firebase
+        database = FirebaseDatabase.getInstance().reference
+
         // Initialize views
         rootLayout = findViewById(R.id.main)
         headerLayout = findViewById(R.id.header)
         logoImageView = findViewById(R.id.logoImageView)
         menuIcon = findViewById(R.id.menu_icon)
         searchIcon = findViewById(R.id.search_icon)
-        bookItem1 = findViewById(R.id.book_item_1)
+        fictionRecyclerView = findViewById(R.id.fictionRecyclerView)
+        nonFictionRecyclerView = findViewById(R.id.nonFictionRecyclerView)
+
+        // Set up RecyclerViews
+        fictionAdapter = BookAdapter()
+        nonFictionAdapter = BookAdapter()
+
+        fictionRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        fictionRecyclerView.adapter = fictionAdapter
+        LinearSnapHelper().attachToRecyclerView(fictionRecyclerView)
+
+        nonFictionRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        nonFictionRecyclerView.adapter = nonFictionAdapter
+        LinearSnapHelper().attachToRecyclerView(nonFictionRecyclerView)
 
         // Set initial state for animation (white header and orange logo)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
@@ -91,15 +116,15 @@ class HomePage : AppCompatActivity() {
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
         })
 
-        // Set click listeners for navigation with exit animation
-        menuIcon.setOnClickListener {
-            // Fade out and slide out to the right
+        // Load books for Fiction and Non-Fiction categories
+        loadBooksByCategory("Fiction", fictionAdapter)
+        loadBooksByCategory("Non-Fiction", nonFictionAdapter)
+
+        // Helper function to apply exit animation and navigate
+        fun applyExitAnimationAndNavigate(targetActivity: Class<*>, toastMessage: String, book: Book? = null) {
             val fadeOut = AlphaAnimation(1f, 0f)
             fadeOut.duration = 2000
-            val slideOutToRight = TranslateAnimation(
-                0f, 1000f,  // Slide to the right by 1000px
-                0f, 0f
-            )
+            val slideOutToRight = TranslateAnimation(0f, 1000f, 0f, 0f)
             slideOutToRight.duration = 2000
             val outAnimationSet = AnimationSet(true)
             outAnimationSet.addAnimation(fadeOut)
@@ -107,96 +132,80 @@ class HomePage : AppCompatActivity() {
 
             outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
                 override fun onAnimationStart(animation: android.view.animation.Animation?) {
-                    // Disable the view during animation to prevent interaction
                     rootLayout.isEnabled = false
                 }
 
                 override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
 
                 override fun onAnimationEnd(animation: android.view.animation.Animation?) {
-                    // Hide the layout to prevent reappearance
                     rootLayout.visibility = View.GONE
-                    val intent = Intent(this@HomePage, MenuPage::class.java)
+                    val intent = if (book != null) {
+                        Intent(this@HomePage, ViewBookPage::class.java).apply {
+                            putExtra("book_title", book.name)
+                            putExtra("book_author", book.author)
+                            putExtra("book_id", book.bookId)
+                        }
+                    } else {
+                        Intent(this@HomePage, targetActivity)
+                    }
                     startActivity(intent)
-                    finish() // Finish after starting the new activity
+                    finish()
                 }
             })
 
             rootLayout.startAnimation(outAnimationSet)
-            Toast.makeText(this, "Navigating to MenuPage", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show()
+        }
+
+        // Set click listeners for navigation
+        menuIcon.setOnClickListener {
+            applyExitAnimationAndNavigate(MenuPage::class.java, "Navigating to MenuPage")
         }
 
         searchIcon.setOnClickListener {
-            // Fade out and slide out to the right
-            val fadeOut = AlphaAnimation(1f, 0f)
-            fadeOut.duration = 2000
-            val slideOutToRight = TranslateAnimation(
-                0f, 1000f,  // Slide to the right by 1000px
-                0f, 0f
-            )
-            slideOutToRight.duration = 2000
-            val outAnimationSet = AnimationSet(true)
-            outAnimationSet.addAnimation(fadeOut)
-            outAnimationSet.addAnimation(slideOutToRight)
-
-            outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
-                override fun onAnimationStart(animation: android.view.animation.Animation?) {
-                    // Disable the view during animation to prevent interaction
-                    rootLayout.isEnabled = false
-                }
-
-                override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
-
-                override fun onAnimationEnd(animation: android.view.animation.Animation?) {
-                    // Hide the layout to prevent reappearance
-                    rootLayout.visibility = View.GONE
-                    val intent = Intent(this@HomePage, SearchPage::class.java)
-                    startActivity(intent)
-                    finish() // Finish after starting the new activity
-                }
-            })
-
-            rootLayout.startAnimation(outAnimationSet)
-            Toast.makeText(this, "Navigating to SearchPage", Toast.LENGTH_SHORT).show()
+            applyExitAnimationAndNavigate(SearchPage::class.java, "Navigating to SearchPage")
         }
 
-        // Set click listener for the first book
-        bookItem1.setOnClickListener {
-            // Fade out and slide out to the right
-            val fadeOut = AlphaAnimation(1f, 0f)
-            fadeOut.duration = 2000
-            val slideOutToRight = TranslateAnimation(
-                0f, 1000f,  // Slide to the right by 1000px
-                0f, 0f
-            )
-            slideOutToRight.duration = 2000
-            val outAnimationSet = AnimationSet(true)
-            outAnimationSet.addAnimation(fadeOut)
-            outAnimationSet.addAnimation(slideOutToRight)
+        // Add click listeners to book items
+        fictionAdapter.setOnItemClickListener { book ->
+            applyExitAnimationAndNavigate(ViewBookPage::class.java, "Navigating to ViewBookPage", book)
+        }
 
-            outAnimationSet.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
-                override fun onAnimationStart(animation: android.view.animation.Animation?) {
-                    // Disable the view during animation to prevent interaction
-                    rootLayout.isEnabled = false
+        nonFictionAdapter.setOnItemClickListener { book ->
+            applyExitAnimationAndNavigate(ViewBookPage::class.java, "Navigating to ViewBookPage", book)
+        }
+    }
+
+    private fun loadBooksByCategory(category: String, adapter: BookAdapter) {
+        val bookList = mutableListOf<Book>()
+        database.child("book").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (!snapshot.exists()) {
+                    Toast.makeText(this@HomePage, "No books found for $category", Toast.LENGTH_SHORT).show()
+                    return
                 }
 
-                override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+                snapshot.children.forEach { bookSnapshot ->
+                    val bookId = bookSnapshot.key ?: return@forEach
+                    val image = bookSnapshot.child("image").getValue(String::class.java)
+                    val name = bookSnapshot.child("name").getValue(String::class.java)
+                    val author = bookSnapshot.child("author").getValue(String::class.java)
+                    val categories = bookSnapshot.child("categories").children.mapNotNull { it.getValue(String::class.java) }
 
-                override fun onAnimationEnd(animation: android.view.animation.Animation?) {
-                    // Hide the layout to prevent reappearance
-                    rootLayout.visibility = View.GONE
-                    val intent = Intent(this@HomePage, ViewBookPage::class.java).apply {
-                        putExtra("book_title", "Book Title 1")
-                        putExtra("book_author", "Author Name")
-                        putExtra("book_cover", R.drawable.fiction_image)
+                    if (categories.contains(category)) {
+                        bookList.add(Book(bookId, image, name, author))
                     }
-                    startActivity(intent)
-                    finish() // Finish after starting the new activity
                 }
-            })
 
-            rootLayout.startAnimation(outAnimationSet)
-            Toast.makeText(this, "Navigating to ViewBookPage", Toast.LENGTH_SHORT).show()
-        }
+                adapter.submitBooks(bookList)
+                if (bookList.isEmpty()) {
+                    Toast.makeText(this@HomePage, "No $category books available", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@HomePage, "Failed to load $category books: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 }
