@@ -14,13 +14,17 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.animation.ArgbEvaluator
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
 import com.bumptech.glide.request.RequestOptions
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import okhttp3.*
 import org.json.JSONObject
@@ -48,6 +52,8 @@ class ViewBookPage : AppCompatActivity() {
     private val client = OkHttpClient()
     private val GOOGLE_API_KEY = "AIzaSyDW-Hweo3zlykmB-PGYtywJOdDVMTjijlk" // Your Google Books API key
     private val TAG = "ViewBookPage"
+    private var ownerId: String? = null
+    private var bookId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,14 +85,14 @@ class ViewBookPage : AppCompatActivity() {
         bookOwnerPic = findViewById(R.id.bookOwnerPic)
         bookOwnerName = findViewById(R.id.bookOwnerName)
 
-        val bookId = intent.getStringExtra("book_id") ?: run {
+        bookId = intent.getStringExtra("book_id") ?: run {
             Toast.makeText(this, "Book ID not found", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
         // Fetch book details including ownerId
-        database.child("book").child(bookId).addListenerForSingleValueEvent(object : ValueEventListener {
+        database.child("book").child(bookId!!).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!snapshot.exists()) {
                     Toast.makeText(this@ViewBookPage, "Book not found", Toast.LENGTH_SHORT).show()
@@ -98,7 +104,7 @@ class ViewBookPage : AppCompatActivity() {
                 val author = snapshot.child("author").getValue(String::class.java) ?: "Unknown Author"
                 val description = snapshot.child("description").getValue(String::class.java) ?: "No description available"
                 val categories = snapshot.child("categories").children.mapNotNull { it.getValue(String::class.java) }.joinToString(", ")
-                val ownerId = snapshot.child("ownerId").getValue(String::class.java)
+                ownerId = snapshot.child("ownerId").getValue(String::class.java)
                 val image = snapshot.child("image").getValue(String::class.java) ?: "Educated"
 
                 // Log the book being viewed
@@ -112,7 +118,7 @@ class ViewBookPage : AppCompatActivity() {
                 Log.d(TAG, "Owner ID: ${ownerId ?: "Not specified"}")
                 Log.d(TAG, "=============================")
 
-                // Populate book details (unchanged display logic)
+                // Populate book details
                 bookName.text = name
                 bookAuthor.text = author
                 bookDescription.text = description
@@ -142,7 +148,7 @@ class ViewBookPage : AppCompatActivity() {
                 // Fetch owner details if ownerId exists
                 if (ownerId != null) {
                     Log.d(TAG, "Fetching owner details for ownerId: $ownerId")
-                    database.child("users").child(ownerId).addListenerForSingleValueEvent(object : ValueEventListener {
+                    database.child("users").child(ownerId!!).addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(userSnapshot: DataSnapshot) {
                             if (userSnapshot.exists()) {
                                 val ownerName = userSnapshot.child("name").getValue(String::class.java) ?: "Unknown User"
@@ -178,12 +184,12 @@ class ViewBookPage : AppCompatActivity() {
 
                 // Save button functionality using SavedBook
                 saveButton.setOnClickListener {
-                    if (dbHelper.bookExists(bookId)) {
+                    if (dbHelper.bookExists(bookId!!)) {
                         Toast.makeText(this@ViewBookPage, "Book already saved", Toast.LENGTH_SHORT).show()
                         Log.d(TAG, "Save aborted: Book with ID $bookId already exists in local DB")
                     } else {
                         val savedBook = SavedBook(
-                            bookId = bookId,
+                            bookId = bookId!!,
                             name = name,
                             author = author,
                             description = description,
@@ -239,6 +245,11 @@ class ViewBookPage : AppCompatActivity() {
                         }
                         Log.d(TAG, "============================")
                     }
+                }
+
+                // Barter button functionality
+                barterButton.setOnClickListener {
+                    showInventoryDialog()
                 }
             }
 
@@ -307,6 +318,113 @@ class ViewBookPage : AppCompatActivity() {
         searchIcon.setOnClickListener { applyExitAnimationAndNavigate(SearchPage::class.java, "Navigating to SearchPage") }
         barterButton.setOnClickListener { applyExitAnimationAndNavigate(InventoryPage::class.java, "Navigating to InventoryPage") }
         contactButton.setOnClickListener { applyExitAnimationAndNavigate(ChatPage::class.java, "Navigating to ChatPage") }
+    }
+
+    private fun showInventoryDialog() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: run {
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Create dialog
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Select a Book to Barter")
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .create()
+
+        // Create RecyclerView for the dialog
+        val recyclerView = RecyclerView(this).apply {
+            layoutManager = LinearLayoutManager(this@ViewBookPage)
+        }
+
+        // Fetch user's inventory (book IDs)
+        database.child("Inventory").child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val inventoryBooks = mutableListOf<InventoryBook>()
+                val bookIds = snapshot.children.mapNotNull { it.key }
+
+                if (bookIds.isEmpty()) {
+                    Toast.makeText(this@ViewBookPage, "Your inventory is empty", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                    return
+                }
+
+                // Fetch full book details for each book ID from the book table
+                var booksFetched = 0
+                for (bookId in bookIds) {
+                    database.child("book").child(bookId).addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(bookSnapshot: DataSnapshot) {
+                            if (bookSnapshot.exists()) {
+                                val image = bookSnapshot.child("image").getValue(String::class.java)
+                                val name = bookSnapshot.child("name").getValue(String::class.java)
+                                val author = bookSnapshot.child("author").getValue(String::class.java)
+                                val description = bookSnapshot.child("description").getValue(String::class.java)
+                                val categories = bookSnapshot.child("categories").children.mapNotNull { it.getValue(String::class.java) }
+                                inventoryBooks.add(InventoryBook(bookId, image, name, author, description, categories))
+                            }
+
+                            booksFetched++
+                            // When all books are fetched, set up the adapter and show the dialog
+                            if (booksFetched == bookIds.size) {
+                                val adapter = InventoryBookAdapter(inventoryBooks) {
+                                    // Do nothing on delete in this context
+                                }
+                                adapter.setOnItemClickListener { selectedBook ->
+                                    Log.d(TAG, "Book clicked: ${selectedBook.name}, ID: ${selectedBook.bookId}")
+                                    createBarterRequest(selectedBook.bookId)
+                                    dialog.dismiss()
+                                }
+                                recyclerView.adapter = adapter
+                                dialog.setView(recyclerView)
+                                dialog.show()
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            booksFetched++
+                            Toast.makeText(this@ViewBookPage, "Failed to load book details: ${error.message}", Toast.LENGTH_SHORT).show()
+                            if (booksFetched == bookIds.size && inventoryBooks.isEmpty()) {
+                                dialog.dismiss()
+                            }
+                        }
+                    })
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@ViewBookPage, "Failed to load inventory: ${error.message}", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+        })
+    }
+
+    private fun createBarterRequest(selectedBookId: String) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: run {
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (ownerId == null || bookId == null) {
+            Toast.makeText(this, "Cannot create barter request: Missing owner or book ID", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Log.d(TAG, "Creating barter request - yourID: $userId, BookID: $selectedBookId, OwnersBookID: $bookId, OwnerID: $ownerId")
+        val barterRequest = mapOf(
+            "yourID" to userId,
+            "BookID" to selectedBookId,
+            "OwnersBookID" to bookId
+        )
+
+        database.child("BarterRequest").child(ownerId!!).push()
+            .setValue(barterRequest)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Barter request sent successfully", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "Barter request sent successfully for ownerId: $ownerId")
+            }
+            .addOnFailureListener { error ->
+                Toast.makeText(this, "Failed to send barter request: ${error.message}", Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "Failed to send barter request: ${error.message}")
+            }
     }
 
     private fun fetchBookCoverFromGoogleBooks(title: String, callback: (String?) -> Unit) {

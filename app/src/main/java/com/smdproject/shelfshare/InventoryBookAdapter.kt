@@ -28,7 +28,7 @@ class InventoryBookAdapter(
 
     private var onItemClickListener: ((InventoryBook) -> Unit)? = null
     private val client = OkHttpClient()
-    private val GOOGLE_API_KEY = "AIzaSyDW-Hweo3zlykmB-PGYtywJOdDVMTjijlk" // Your Google Books API key
+    private val GOOGLE_API_KEY = "AIzaSyDW-Hweo3zlykmB-PGYtywJOdDVMTjijlk"
     private val TAG = "InventoryBookAdapter"
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BookViewHolder {
@@ -54,6 +54,7 @@ class InventoryBookAdapter(
 
     fun setOnItemClickListener(listener: (InventoryBook) -> Unit) {
         onItemClickListener = listener
+        Log.d(TAG, "Item click listener set")
     }
 
     inner class BookViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -63,6 +64,18 @@ class InventoryBookAdapter(
         private val bookDescription: TextView = itemView.findViewById(R.id.bookDescription)
         private val bookCategory: TextView = itemView.findViewById(R.id.bookCategory)
         private val deleteButton: Button = itemView.findViewById(R.id.deleteButton)
+
+        init {
+            // Set click listener on the entire item view for selecting the book
+            itemView.setOnClickListener {
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    val book = books[position]
+                    Log.d(TAG, "Item clicked at position $position: ${book.name}, ID: ${book.bookId}")
+                    onItemClickListener?.invoke(book)
+                }
+            }
+        }
 
         fun bind(book: InventoryBook) {
             val bookTitle = book.name?.takeIf { it.isNotEmpty() } ?: "Unknown Title"
