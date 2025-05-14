@@ -40,9 +40,11 @@ class ViewBookPage : AppCompatActivity() {
     private lateinit var bookCategories: TextView
     private lateinit var barterButton: Button
     private lateinit var contactButton: Button
+    private lateinit var saveButton: Button
     private lateinit var bookOwnerPic: ImageView
     private lateinit var bookOwnerName: TextView
     private lateinit var database: DatabaseReference
+    private lateinit var dbHelper: DatabaseHelper
     private val client = OkHttpClient()
     private val GOOGLE_API_KEY = "AIzaSyDW-Hweo3zlykmB-PGYtywJOdDVMTjijlk" // Your Google Books API key
     private val TAG = "ViewBookPage"
@@ -59,6 +61,7 @@ class ViewBookPage : AppCompatActivity() {
         }
 
         database = FirebaseDatabase.getInstance().reference
+        dbHelper = DatabaseHelper(this)
 
         rootLayout = findViewById(R.id.main)
         headerLayout = findViewById(R.id.header)
@@ -72,6 +75,7 @@ class ViewBookPage : AppCompatActivity() {
         bookCategories = findViewById(R.id.bookCategories)
         barterButton = findViewById(R.id.barterButton)
         contactButton = findViewById(R.id.contactButton)
+        saveButton = findViewById(R.id.saveButton)
         bookOwnerPic = findViewById(R.id.bookOwnerPic)
         bookOwnerName = findViewById(R.id.bookOwnerName)
 
@@ -95,10 +99,20 @@ class ViewBookPage : AppCompatActivity() {
                 val description = snapshot.child("description").getValue(String::class.java) ?: "No description available"
                 val categories = snapshot.child("categories").children.mapNotNull { it.getValue(String::class.java) }.joinToString(", ")
                 val ownerId = snapshot.child("ownerId").getValue(String::class.java)
+                val image = snapshot.child("image").getValue(String::class.java) ?: "Educated"
 
-                Log.d(TAG, "Fetched book: $name, Author: $author, Description: $description, Categories: $categories, OwnerId: $ownerId")
+                // Log the book being viewed
+                Log.d(TAG, "=== Book Currently in View ===")
+                Log.d(TAG, "Book ID: $bookId")
+                Log.d(TAG, "Name: $name")
+                Log.d(TAG, "Author: $author")
+                Log.d(TAG, "Description: $description")
+                Log.d(TAG, "Categories: ${if (categories.isNotEmpty()) categories else "No categories"}")
+                Log.d(TAG, "Image (Title): $image")
+                Log.d(TAG, "Owner ID: ${ownerId ?: "Not specified"}")
+                Log.d(TAG, "=============================")
 
-                // Populate book details
+                // Populate book details (unchanged display logic)
                 bookName.text = name
                 bookAuthor.text = author
                 bookDescription.text = description
@@ -160,6 +174,71 @@ class ViewBookPage : AppCompatActivity() {
                 } else {
                     bookOwnerName.text = "Unknown User"
                     bookOwnerPic.setImageResource(R.drawable.default_profile_pic)
+                }
+
+                // Save button functionality using SavedBook
+                saveButton.setOnClickListener {
+                    if (dbHelper.bookExists(bookId)) {
+                        Toast.makeText(this@ViewBookPage, "Book already saved", Toast.LENGTH_SHORT).show()
+                        Log.d(TAG, "Save aborted: Book with ID $bookId already exists in local DB")
+                    } else {
+                        val savedBook = SavedBook(
+                            bookId = bookId,
+                            name = name,
+                            author = author,
+                            description = description,
+                            categories = categories,
+                            image = image,
+                            ownerId = ownerId ?: ""
+                        )
+
+                        // Log the book about to be saved
+                        Log.d(TAG, "=== Preparing to Save Book to Local DB ===")
+                        Log.d(TAG, "Book ID: ${savedBook.bookId}")
+                        Log.d(TAG, "Name: ${savedBook.name}")
+                        Log.d(TAG, "Author: ${savedBook.author}")
+                        Log.d(TAG, "Description: ${savedBook.description}")
+                        Log.d(TAG, "Categories: ${savedBook.categories}")
+                        Log.d(TAG, "Image (Title): ${savedBook.image}")
+                        Log.d(TAG, "Owner ID: ${savedBook.ownerId}")
+                        Log.d(TAG, "=========================================")
+
+                        // Save the book
+                        dbHelper.saveBook(savedBook)
+
+                        // Log confirmation of what was saved
+                        Log.d(TAG, "=== Book Saved to Local DB ===")
+                        Log.d(TAG, "Book ID: ${savedBook.bookId}")
+                        Log.d(TAG, "Name: ${savedBook.name}")
+                        Log.d(TAG, "Author: ${savedBook.author}")
+                        Log.d(TAG, "Description: ${savedBook.description}")
+                        Log.d(TAG, "Categories: ${savedBook.categories}")
+                        Log.d(TAG, "Image (Title): ${savedBook.image}")
+                        Log.d(TAG, "Owner ID: ${savedBook.ownerId}")
+                        Log.d(TAG, "=============================")
+
+                        Toast.makeText(this@ViewBookPage, "Book saved locally", Toast.LENGTH_SHORT).show()
+
+                        // Query and log all books in the local DB
+                        val allBooks = dbHelper.getAllSavedBooks()
+                        Log.d(TAG, "=== All Books in Local DB ===")
+                        if (allBooks.isEmpty()) {
+                            Log.d(TAG, "No books found in local DB")
+                        } else {
+                            allBooks.forEachIndexed { index, book ->
+                                Log.d(TAG, "Book ${index + 1}:")
+                                Log.d(TAG, "  Book ID: ${book.bookId}")
+                                Log.d(TAG, "  Name: ${book.name}")
+                                Log.d(TAG, "  Author: ${book.author}")
+                                Log.d(TAG, "  Description: ${book.description}")
+                                Log.d(TAG, "  Categories: ${book.categories}")
+                                Log.d(TAG, "  Image (Title): ${book.image}")
+                                Log.d(TAG, "  Owner ID: ${book.ownerId}")
+                                Log.d(TAG, "-----------------------------")
+                            }
+                        }
+                        Log.d(TAG, "============================")
+                    }
                 }
             }
 

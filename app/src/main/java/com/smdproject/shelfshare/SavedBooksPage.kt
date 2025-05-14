@@ -3,6 +3,7 @@ package com.smdproject.shelfshare
 import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
@@ -15,6 +16,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.animation.ArgbEvaluator
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 
 class SavedBooksPage : AppCompatActivity() {
     private lateinit var rootLayout: RelativeLayout
@@ -22,6 +25,9 @@ class SavedBooksPage : AppCompatActivity() {
     private lateinit var logoImageView: ImageView
     private lateinit var menuIcon: ImageView
     private lateinit var searchIcon: ImageView
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var dbHelper: DatabaseHelper
+    private val TAG = "SavedBooksPage"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +47,8 @@ class SavedBooksPage : AppCompatActivity() {
         logoImageView = findViewById(R.id.logoImageView)
         menuIcon = findViewById(R.id.menu_icon)
         searchIcon = findViewById(R.id.search_icon)
+        recyclerView = findViewById(R.id.recycler_view)
+        dbHelper = DatabaseHelper(this)
 
         // Set initial state for animation (white header and orange logo)
         headerLayout.setBackgroundColor(android.graphics.Color.WHITE)
@@ -88,6 +96,9 @@ class SavedBooksPage : AppCompatActivity() {
                 logoImageView.setImageResource(R.drawable.logo_white_right)
                 menuIcon.setImageResource(R.drawable.menu_logo)
                 searchIcon.setImageResource(R.drawable.search_logo)
+
+                // Load saved books
+                loadSavedBooks()
             }
 
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
@@ -130,5 +141,13 @@ class SavedBooksPage : AppCompatActivity() {
         searchIcon.setOnClickListener {
             applyExitAnimationAndNavigate(SearchPage::class.java, "Navigating to SearchPage")
         }
+    }
+
+    private fun loadSavedBooks() {
+        val savedBooks = dbHelper.getAllSavedBooks()
+        Log.d(TAG, "Loaded ${savedBooks.size} saved books from local DB")
+
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = SavedBookAdapter(savedBooks)
     }
 }

@@ -13,6 +13,7 @@ import java.io.IOException
 
 data class Book(val bookId: String, val image: String?, val name: String?, val author: String?)
 
+
 class BookAdapter(private var books: List<Book> = emptyList()) : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
 
     private var onItemClickListener: ((Book) -> Unit)? = null
